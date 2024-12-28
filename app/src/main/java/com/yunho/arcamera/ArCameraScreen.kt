@@ -3,6 +3,7 @@ package com.yunho.arcamera
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -165,27 +166,45 @@ fun ArCameraScreen() {
                 }
             )
         )
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(bottom = 100.dp),
-            horizontalArrangement = Arrangement.SpaceAround
+                .padding(bottom = 100.dp)
         ) {
-            Button(onClick = {
-                rotationMode = RotationAxis.X
-            }) {
-                Text("X")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                Button(onClick = {
+                    rotationMode = RotationAxis.X
+                }) {
+                    Text("X")
+                }
+                Button(onClick = {
+                    rotationMode = RotationAxis.Y
+                }) {
+                    Text("Y")
+                }
+                Button(onClick = {
+                    rotationMode = RotationAxis.Z
+                }) {
+                    Text("Z")
+                }
             }
-            Button(onClick = {
-                rotationMode = RotationAxis.Y
-            }) {
-                Text("Y")
-            }
-            Button(onClick = {
-                rotationMode = RotationAxis.Z
-            }) {
-                Text("Z")
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                Button(onClick = {
+                    childNodes.clear()
+                    rotationDegree = Rotation()
+                    currentAnchor = null
+                    modelScale = 0.5f
+                }) {
+                    Text("Reset")
+                }
             }
         }
     }
