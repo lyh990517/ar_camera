@@ -1,6 +1,7 @@
 package com.yunho.arcamera
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -68,21 +69,8 @@ fun ArCameraScreen() {
                     Config.LightEstimationMode.ENVIRONMENTAL_HDR
             },
             cameraNode = cameraNode,
-            onSessionUpdated = { session, updatedFrame ->
+            onSessionUpdated = { _, updatedFrame ->
                 frame = updatedFrame
-
-                if (childNodes.isEmpty()) {
-                    updatedFrame.getUpdatedPlanes()
-                        .firstOrNull { it.type == Plane.Type.HORIZONTAL_UPWARD_FACING }
-                        ?.let { it.createAnchorOrNull(it.centerPose) }?.let { anchor ->
-                            childNodes += createAnchorNode(
-                                engine = engine,
-                                modelLoader = modelLoader,
-                                materialLoader = materialLoader,
-                                anchor = anchor
-                            )
-                        }
-                }
             },
             onGestureListener = rememberOnGestureListener(
                 onSingleTapConfirmed = { motionEvent, node ->
@@ -120,7 +108,6 @@ fun createAnchorNode(
         scaleToUnits = 0.01f,
     ).apply {
         isEditable = true
-        editableScaleRange = 0.2f..0.75f
     }
     val boundingBoxNode = CubeNode(
         engine,
