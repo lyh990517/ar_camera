@@ -1,6 +1,13 @@
 package com.yunho.arcamera
 
-import android.util.Log
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.os.Handler
+import android.os.Looper
+import android.view.PixelCopy
+import android.view.View
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,19 +25,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import com.google.android.filament.Engine
 import com.google.ar.core.Anchor
 import com.google.ar.core.Config
 import com.google.ar.core.Frame
 import io.github.sceneview.ar.ARScene
+import io.github.sceneview.ar.ARSceneView
 import io.github.sceneview.ar.arcore.createAnchorOrNull
 import io.github.sceneview.ar.arcore.isValid
 import io.github.sceneview.ar.node.AnchorNode
 import io.github.sceneview.ar.rememberARCameraNode
 import io.github.sceneview.loaders.ModelLoader
 import io.github.sceneview.math.Position
-import io.github.sceneview.math.Rotation
 import io.github.sceneview.math.Scale
 import io.github.sceneview.node.ModelNode
 import io.github.sceneview.rememberCollisionSystem
@@ -38,16 +50,16 @@ import io.github.sceneview.rememberModelLoader
 import io.github.sceneview.rememberNodes
 import io.github.sceneview.rememberOnGestureListener
 import io.github.sceneview.rememberView
-
-enum class RotationAxis {
-    X, Y, Z
-}
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 
 @Composable
 fun ArCameraScreen() {
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
+        val localView = LocalView.current
+        val context = LocalContext.current
         val engine = rememberEngine()
         val modelLoader = rememberModelLoader(engine)
         val cameraNode = rememberARCameraNode(engine)
@@ -56,12 +68,12 @@ fun ArCameraScreen() {
         val collisionSystem = rememberCollisionSystem(view)
         var modelScale by remember { mutableStateOf(0.5f) }
         var currentAnchor by remember { mutableStateOf<Anchor?>(null) }
-//        var rotationMode by remember { mutableStateOf(RotationAxis.X) }
-//        var rotationDegree by remember { mutableStateOf(Rotation(1f, 1f, 1f)) }
         var frame by remember { mutableStateOf<Frame?>(null) }
-
+        val captureBitmapState = remember { mutableStateOf<Bitmap?>(null) }
+        var arSceneView by remember { mutableStateOf<ARSceneView?>(null) }
         ARScene(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize(),
             childNodes = childNodes,
             engine = engine,
             view = view,
@@ -89,8 +101,6 @@ fun ArCameraScreen() {
                                 pose.tx(), pose.ty(), pose.tz()
                             )
                         }
-
-//                        rotation = rotationDegree
                     }
                 }
                 childNodes.clear()
@@ -135,63 +145,27 @@ fun ArCameraScreen() {
                     val scaleFactor = scaleGestureDetector.scaleFactor
                     modelScale = (modelScale * scaleFactor).coerceAtMost(1f).coerceAtLeast(0.1f)
                 },
-//                onRotate = { r, m, n ->
-//                    val rotation = r.currentAngle
-//
-//                    rotationDegree = when (rotationMode) {
-//                        RotationAxis.X -> {
-//                            Rotation(
-//                                rotationDegree.x * rotation,
-//                                rotationDegree.y,
-//                                rotationDegree.z
-//                            )
-//                        }
-//
-//                        RotationAxis.Y -> {
-//                            Rotation(
-//                                rotationDegree.x,
-//                                rotationDegree.y * rotation,
-//                                rotationDegree.z
-//                            )
-//                        }
-//
-//                        RotationAxis.Z -> {
-//                            Rotation(
-//                                rotationDegree.x,
-//                                rotationDegree.y,
-//                                rotationDegree.z * rotation
-//                            )
-//                        }
-//                    }
-//                }
-            )
+            ),
+            onViewCreated = {
+                arSceneView = this
+            }
         )
+        captureBitmapState.value?.let { bitmap ->
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(200.dp)
+                    .background(Color.White)
+                    .align(Alignment.TopCenter)
+            )
+        }
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(bottom = 100.dp)
         ) {
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.SpaceAround
-//            ) {
-//                Button(onClick = {
-//                    rotationMode = RotationAxis.X
-//                }) {
-//                    Text("X")
-//                }
-//                Button(onClick = {
-//                    rotationMode = RotationAxis.Y
-//                }) {
-//                    Text("Y")
-//                }
-//                Button(onClick = {
-//                    rotationMode = RotationAxis.Z
-//                }) {
-//                    Text("Z")
-//                }
-//            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -199,15 +173,66 @@ fun ArCameraScreen() {
             ) {
                 Button(onClick = {
                     childNodes.clear()
-//                    rotationDegree = Rotation()
                     currentAnchor = null
                     modelScale = 0.5f
                 }) {
                     Text("Reset")
                 }
+                Button(onClick = {
+                    captureBitmapState.value = screenShot(localView)
+                }) {
+                    Text("Capture")
+                }
             }
         }
     }
+}
+
+fun screenShot(view: View): Bitmap {
+    val bitmap = Bitmap.createBitmap(
+        view.width,
+        view.height, Bitmap.Config.ARGB_8888
+    )
+    val canvas = Canvas(bitmap)
+    view.draw(canvas)
+    return bitmap
+}
+
+sealed interface CaptureResult {
+    data class Success(val image: ByteArray) : CaptureResult
+    data object Fail : CaptureResult
+}
+
+private fun handleSnapshot(arSceneView: ARSceneView) = callbackFlow {
+    val bitmap =
+        Bitmap.createBitmap(
+            arSceneView.width,
+            arSceneView.height,
+            Bitmap.Config.ARGB_8888,
+        )
+
+    val listener =
+        PixelCopy.OnPixelCopyFinishedListener { copyResult ->
+            if (copyResult == PixelCopy.SUCCESS) {
+                val byteStream = java.io.ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream)
+                val byteArray = byteStream.toByteArray()
+                trySend(
+                    CaptureResult.Success(byteArray)
+                )
+            } else {
+                trySend(CaptureResult.Fail)
+            }
+        }
+
+    PixelCopy.request(
+        arSceneView,
+        bitmap,
+        listener,
+        Handler(Looper.getMainLooper()),
+    )
+
+    awaitClose { }
 }
 
 fun createAnchorNode(
