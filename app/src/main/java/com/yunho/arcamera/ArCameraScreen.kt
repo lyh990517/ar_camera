@@ -56,8 +56,8 @@ fun ArCameraScreen() {
         val collisionSystem = rememberCollisionSystem(view)
         var modelScale by remember { mutableStateOf(0.5f) }
         var currentAnchor by remember { mutableStateOf<Anchor?>(null) }
-        var rotationMode by remember { mutableStateOf(RotationAxis.X) }
-        var rotationDegree by remember { mutableStateOf(Rotation(1f, 1f, 1f)) }
+//        var rotationMode by remember { mutableStateOf(RotationAxis.X) }
+//        var rotationDegree by remember { mutableStateOf(Rotation(1f, 1f, 1f)) }
         var frame by remember { mutableStateOf<Frame?>(null) }
 
         ARScene(
@@ -90,7 +90,7 @@ fun ArCameraScreen() {
                             )
                         }
 
-                        rotation = rotationDegree
+//                        rotation = rotationDegree
                     }
                 }
                 childNodes.clear()
@@ -135,35 +135,35 @@ fun ArCameraScreen() {
                     val scaleFactor = scaleGestureDetector.scaleFactor
                     modelScale = (modelScale * scaleFactor).coerceAtMost(1f).coerceAtLeast(0.1f)
                 },
-                onRotate = { r, m, n ->
-                    val rotation = r.currentAngle
-
-                    rotationDegree = when (rotationMode) {
-                        RotationAxis.X -> {
-                            Rotation(
-                                rotationDegree.x * rotation,
-                                rotationDegree.y,
-                                rotationDegree.z
-                            )
-                        }
-
-                        RotationAxis.Y -> {
-                            Rotation(
-                                rotationDegree.x,
-                                rotationDegree.y * rotation,
-                                rotationDegree.z
-                            )
-                        }
-
-                        RotationAxis.Z -> {
-                            Rotation(
-                                rotationDegree.x,
-                                rotationDegree.y,
-                                rotationDegree.z * rotation
-                            )
-                        }
-                    }
-                }
+//                onRotate = { r, m, n ->
+//                    val rotation = r.currentAngle
+//
+//                    rotationDegree = when (rotationMode) {
+//                        RotationAxis.X -> {
+//                            Rotation(
+//                                rotationDegree.x * rotation,
+//                                rotationDegree.y,
+//                                rotationDegree.z
+//                            )
+//                        }
+//
+//                        RotationAxis.Y -> {
+//                            Rotation(
+//                                rotationDegree.x,
+//                                rotationDegree.y * rotation,
+//                                rotationDegree.z
+//                            )
+//                        }
+//
+//                        RotationAxis.Z -> {
+//                            Rotation(
+//                                rotationDegree.x,
+//                                rotationDegree.y,
+//                                rotationDegree.z * rotation
+//                            )
+//                        }
+//                    }
+//                }
             )
         )
         Column(
@@ -172,26 +172,26 @@ fun ArCameraScreen() {
                 .fillMaxWidth()
                 .padding(bottom = 100.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround
-            ) {
-                Button(onClick = {
-                    rotationMode = RotationAxis.X
-                }) {
-                    Text("X")
-                }
-                Button(onClick = {
-                    rotationMode = RotationAxis.Y
-                }) {
-                    Text("Y")
-                }
-                Button(onClick = {
-                    rotationMode = RotationAxis.Z
-                }) {
-                    Text("Z")
-                }
-            }
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.SpaceAround
+//            ) {
+//                Button(onClick = {
+//                    rotationMode = RotationAxis.X
+//                }) {
+//                    Text("X")
+//                }
+//                Button(onClick = {
+//                    rotationMode = RotationAxis.Y
+//                }) {
+//                    Text("Y")
+//                }
+//                Button(onClick = {
+//                    rotationMode = RotationAxis.Z
+//                }) {
+//                    Text("Z")
+//                }
+//            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -199,7 +199,7 @@ fun ArCameraScreen() {
             ) {
                 Button(onClick = {
                     childNodes.clear()
-                    rotationDegree = Rotation()
+//                    rotationDegree = Rotation()
                     currentAnchor = null
                     modelScale = 0.5f
                 }) {
