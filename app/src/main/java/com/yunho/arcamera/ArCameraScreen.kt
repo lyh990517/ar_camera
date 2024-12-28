@@ -19,6 +19,7 @@ import io.github.sceneview.ar.node.AnchorNode
 import io.github.sceneview.ar.rememberARCameraNode
 import io.github.sceneview.loaders.ModelLoader
 import io.github.sceneview.math.Position
+import io.github.sceneview.math.Scale
 import io.github.sceneview.node.ModelNode
 import io.github.sceneview.rememberCollisionSystem
 import io.github.sceneview.rememberEngine
@@ -38,6 +39,7 @@ fun ArCameraScreen() {
         val childNodes = rememberNodes()
         val view = rememberView(engine)
         val collisionSystem = rememberCollisionSystem(view)
+        var modelScale by remember { mutableStateOf(0.1f) }
 
         var frame by remember { mutableStateOf<Frame?>(null) }
         ARScene(
@@ -60,6 +62,13 @@ fun ArCameraScreen() {
             cameraNode = cameraNode,
             onSessionUpdated = { _, updatedFrame ->
                 frame = updatedFrame
+                val list = childNodes.map { node ->
+                    node.apply {
+                        scale = Scale(modelScale, modelScale, modelScale)
+                    }
+                }
+                childNodes.clear()
+                childNodes.addAll(list)
             },
             onGestureListener = rememberOnGestureListener(
                 onSingleTapConfirmed = { motionEvent, node ->
@@ -72,12 +81,28 @@ fun ArCameraScreen() {
                             )
                         }?.createAnchorOrNull()
                             ?.let { anchor ->
+                                childNodes.clear()
+
                                 childNodes += createAnchorNode(
                                     engine = engine,
                                     modelLoader = modelLoader,
                                     anchor = anchor
                                 )
                             }
+                    }
+                },
+                onScale = { scaleGestureDetector, motionEvent, node ->
+                    val scaleFactor = scaleGestureDetector.scaleFactor
+
+                    when {
+                        scaleFactor > 1 -> {
+                            modelScale *= scaleFactor
+                        }
+
+                        scaleFactor < 1 -> {
+                            modelScale *= scaleFactor
+
+                        }
                     }
                 })
         )
