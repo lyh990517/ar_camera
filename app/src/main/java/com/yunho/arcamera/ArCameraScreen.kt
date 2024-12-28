@@ -41,8 +41,9 @@ fun ArCameraScreen() {
         val view = rememberView(engine)
         val collisionSystem = rememberCollisionSystem(view)
         var modelScale by remember { mutableStateOf(0.5f) }
-
+        var currentAnchor by remember { mutableStateOf<Anchor?>(null) }
         var frame by remember { mutableStateOf<Frame?>(null) }
+
         ARScene(
             modifier = Modifier.fillMaxSize(),
             childNodes = childNodes,
@@ -63,9 +64,15 @@ fun ArCameraScreen() {
             cameraNode = cameraNode,
             onSessionUpdated = { _, updatedFrame ->
                 frame = updatedFrame
+                val pose = currentAnchor?.pose
                 val list = childNodes.map { node ->
                     node.apply {
                         scale = Scale(modelScale, modelScale, modelScale)
+                        pose?.let {
+                            position = Position(
+                                pose.tx(), pose.ty(), pose.tz()
+                            )
+                        }
                     }
                 }
                 childNodes.clear()
@@ -84,6 +91,7 @@ fun ArCameraScreen() {
                             ?.let { anchor ->
                                 childNodes.clear()
 
+                                currentAnchor = anchor
                                 childNodes += createAnchorNode(
                                     engine = engine,
                                     modelLoader = modelLoader,
@@ -91,6 +99,19 @@ fun ArCameraScreen() {
                                 )
                             }
                     }
+                },
+                onMove = { d, m, n ->
+                    val hitResults = frame?.hitTest(m.x, m.y)
+
+                    hitResults?.firstOrNull {
+                        it.isValid(
+                            depthPoint = false,
+                            point = false
+                        )
+                    }?.createAnchorOrNull()
+                        ?.let { anchor ->
+                            currentAnchor = anchor
+                        }
                 },
                 onScale = { scaleGestureDetector, motionEvent, node ->
                     val scaleFactor = scaleGestureDetector.scaleFactor
