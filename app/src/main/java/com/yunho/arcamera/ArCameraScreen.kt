@@ -1,11 +1,11 @@
 package com.yunho.arcamera
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
+import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.PixelCopy
-import android.view.View
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,14 +53,15 @@ import io.github.sceneview.rememberOnGestureListener
 import io.github.sceneview.rememberView
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @Composable
 fun ArCameraScreen() {
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-        val localView = LocalView.current
-        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
         val engine = rememberEngine()
         val modelLoader = rememberModelLoader(engine)
         val cameraNode = rememberARCameraNode(engine)
@@ -179,7 +181,14 @@ fun ArCameraScreen() {
                     Text("Reset")
                 }
                 Button(onClick = {
-                    captureBitmapState.value = screenShot(localView)
+                    arSceneView?.let {
+                        scope.launch {
+                            val byteArray = handleSnapshot(it).first()
+                            val bitmap = byteArrayToBitmap(byteArray)
+                            Log.e("123", "$bitmap")
+                            captureBitmapState.value = bitmap
+                        }
+                    }
                 }) {
                     Text("Capture")
                 }
@@ -188,19 +197,8 @@ fun ArCameraScreen() {
     }
 }
 
-fun screenShot(view: View): Bitmap {
-    val bitmap = Bitmap.createBitmap(
-        view.width,
-        view.height, Bitmap.Config.ARGB_8888
-    )
-    val canvas = Canvas(bitmap)
-    view.draw(canvas)
-    return bitmap
-}
-
-sealed interface CaptureResult {
-    data class Success(val image: ByteArray) : CaptureResult
-    data object Fail : CaptureResult
+private fun byteArrayToBitmap(byteArray: ByteArray): Bitmap? {
+    return BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
 }
 
 private fun handleSnapshot(arSceneView: ARSceneView) = callbackFlow {
@@ -218,10 +216,8 @@ private fun handleSnapshot(arSceneView: ARSceneView) = callbackFlow {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream)
                 val byteArray = byteStream.toByteArray()
                 trySend(
-                    CaptureResult.Success(byteArray)
+                    byteArray
                 )
-            } else {
-                trySend(CaptureResult.Fail)
             }
         }
 
