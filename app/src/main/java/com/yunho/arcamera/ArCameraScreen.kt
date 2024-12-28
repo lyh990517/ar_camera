@@ -132,7 +132,7 @@ fun ArCameraScreen() {
                 },
                 onScale = { scaleGestureDetector, motionEvent, node ->
                     val scaleFactor = scaleGestureDetector.scaleFactor
-                    modelScale *= scaleFactor
+                    modelScale = (modelScale * scaleFactor).coerceAtMost(1f).coerceAtLeast(0.1f)
                 },
                 onRotate = { r, m, n ->
                     val rotation = r.currentAngle
