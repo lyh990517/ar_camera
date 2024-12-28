@@ -1,5 +1,6 @@
 package com.yunho.arcamera
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -39,7 +40,7 @@ fun ArCameraScreen() {
         val childNodes = rememberNodes()
         val view = rememberView(engine)
         val collisionSystem = rememberCollisionSystem(view)
-        var modelScale by remember { mutableStateOf(0.1f) }
+        var modelScale by remember { mutableStateOf(0.5f) }
 
         var frame by remember { mutableStateOf<Frame?>(null) }
         ARScene(
@@ -71,7 +72,7 @@ fun ArCameraScreen() {
                 childNodes.addAll(list)
             },
             onGestureListener = rememberOnGestureListener(
-                onSingleTapConfirmed = { motionEvent, node ->
+                onSingleTapUp = { motionEvent, node ->
                     if (node == null) {
                         val hitResults = frame?.hitTest(motionEvent.x, motionEvent.y)
                         hitResults?.firstOrNull {
@@ -93,17 +94,7 @@ fun ArCameraScreen() {
                 },
                 onScale = { scaleGestureDetector, motionEvent, node ->
                     val scaleFactor = scaleGestureDetector.scaleFactor
-
-                    when {
-                        scaleFactor > 1 -> {
-                            modelScale *= scaleFactor
-                        }
-
-                        scaleFactor < 1 -> {
-                            modelScale *= scaleFactor
-
-                        }
-                    }
+                    modelScale *= scaleFactor
                 })
         )
     }
