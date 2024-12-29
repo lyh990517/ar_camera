@@ -17,21 +17,20 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -41,9 +40,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.google.android.filament.Engine
@@ -174,6 +175,7 @@ fun ArCameraScreen() {
         CaptureButton(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
                 .padding(bottom = 100.dp),
             onCapture = {
                 arSceneView?.let {
@@ -185,6 +187,7 @@ fun ArCameraScreen() {
                 }
             }
         )
+
         CaptureResult(
             result = captureResult,
             onBackPressed = {
@@ -218,16 +221,42 @@ private fun CaptureButton(
     modifier: Modifier = Modifier,
     onCapture: () -> Unit,
 ) {
-    Column(
+    FloatingActionButton(
+        onClick = { onCapture() },
+        containerColor = Color.White,
+        contentColor = Color.Black,
         modifier = modifier
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .size(72.dp)
+            .shadow(10.dp, shape = CircleShape)
     ) {
-        Button(onClick = {
-            onCapture()
-        }) {
-            Text("Capture")
-        }
+        Icon(
+            painter = painterResource(R.drawable.camera),
+            contentDescription = "Capture",
+            tint = Color.Black,
+            modifier = Modifier.size(36.dp)
+        )
+    }
+}
+
+@Composable
+private fun SaveButton(
+    modifier: Modifier = Modifier,
+    onSave: () -> Unit,
+) {
+    FloatingActionButton(
+        onClick = { onSave() },
+        containerColor = Color.White,
+        contentColor = Color.Black,
+        modifier = modifier
+            .size(72.dp)
+            .shadow(10.dp, shape = CircleShape)
+    ) {
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowDown,
+            contentDescription = "Save",
+            tint = Color.Black,
+            modifier = Modifier.size(36.dp)
+        )
     }
 }
 
@@ -274,32 +303,25 @@ private fun CaptureResult(
                 )
             }
 
-            FloatingActionButton(
-                onClick = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        saveBitmapToGallery(context = context, bitmap = bitmap)
-                    } else {
-                        if (ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.WRITE_EXTERNAL_STORAGE
-                            ) == PackageManager.PERMISSION_GRANTED
-                        ) {
-                            saveBitmapToGallery(context = context, bitmap = bitmap)
-                        } else {
-                            permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        }
-                    }
-                }, modifier = Modifier
+            SaveButton(
+                modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 100.dp),
-                contentColor = Color.Black,
-                containerColor = Color.White
+                    .padding(bottom = 100.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = "Save"
-                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    saveBitmapToGallery(context = context, bitmap = bitmap)
+                } else {
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        saveBitmapToGallery(context = context, bitmap = bitmap)
+                    } else {
+                        permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    }
+                }
             }
         }
     }
