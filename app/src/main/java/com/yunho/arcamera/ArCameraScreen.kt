@@ -1,10 +1,20 @@
 package com.yunho.arcamera
 
+import android.Manifest
+import android.content.ContentValues
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.view.PixelCopy
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,16 +22,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -32,7 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.google.android.filament.Engine
 import com.google.ar.core.Anchor
 import com.google.ar.core.Config
@@ -102,11 +116,7 @@ fun ArCameraScreen() {
                 val list = childNodes.map { node ->
                     node.apply {
                         scale = Scale(modelScale, modelScale, modelScale)
-                        pose?.let {
-                            position = Position(
-                                pose.tx(), pose.ty(), pose.tz()
-                            )
-                        }
+                        pose?.let { position = Position(pose.tx(), pose.ty(), pose.tz()) }
                     }
                 }
                 childNodes.clear()
@@ -117,7 +127,7 @@ fun ArCameraScreen() {
                     if (node == null) {
                         val hitResults = frame?.hitTest(motionEvent.x, motionEvent.y)
                         hitResults
-                            ?.firstOrNull()
+                            ?.firstOrNull { it.isValid(depthPoint = false, point = false) }
                             ?.createAnchorOrNull()
                             ?.let { anchor ->
                                 childNodes.clear()
@@ -135,7 +145,7 @@ fun ArCameraScreen() {
                     val hitResults = frame?.hitTest(motionEvent.x, motionEvent.y)
 
                     hitResults
-                        ?.firstOrNull()
+                        ?.firstOrNull { it.isValid(depthPoint = false, point = false) }
                         ?.createAnchorOrNull()
                         ?.let { anchor ->
                             currentAnchor = anchor
@@ -173,9 +183,6 @@ fun ArCameraScreen() {
             result = captureResult,
             onBackPressed = {
                 captureResult = null
-            },
-            onSave = {
-
             }
         )
     }
@@ -213,8 +220,22 @@ private fun Menu(
 private fun CaptureResult(
     result: Bitmap?,
     onBackPressed: () -> Unit,
-    onSave: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                result?.let { bitmap ->
+                    saveBitmapToGallery(context = context, bitmap = bitmap)
+                }
+            } else {
+                Toast.makeText(context, "Permission denied. Cannot save image.", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+    )
+
     result?.let { bitmap ->
         Box(
             modifier = Modifier.fillMaxSize()
@@ -237,7 +258,57 @@ private fun CaptureResult(
                     tint = Color.White
                 )
             }
+
+            FloatingActionButton(
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        saveBitmapToGallery(context = context, bitmap = bitmap)
+                    } else {
+                        if (ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.WRITE_EXTERNAL_STORAGE
+                            ) == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            saveBitmapToGallery(context = context, bitmap = bitmap)
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        }
+                    }
+                }, modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 100.dp),
+                contentColor = Color.Black,
+                containerColor = Color.White
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Save"
+                )
+            }
         }
+    }
+}
+
+fun saveBitmapToGallery(context: Context, bitmap: Bitmap) {
+    val contentValues = ContentValues().apply {
+        put(MediaStore.Images.Media.DISPLAY_NAME, "Image_${System.currentTimeMillis()}.jpg")
+        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+    }
+
+    val resolver = context.contentResolver
+    val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+
+    uri?.let {
+        resolver.openOutputStream(it).use { outputStream ->
+            if (outputStream != null) {
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                Toast.makeText(context, "Image saved to gallery!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    } ?: run {
+        Toast.makeText(context, "Failed to save image", Toast.LENGTH_SHORT).show()
     }
 }
 
