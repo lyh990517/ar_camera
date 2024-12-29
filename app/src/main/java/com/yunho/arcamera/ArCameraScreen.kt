@@ -252,7 +252,7 @@ private fun SaveButton(
             .shadow(10.dp, shape = CircleShape)
     ) {
         Icon(
-            imageVector = Icons.Default.KeyboardArrowDown,
+            painter = painterResource(R.drawable.download),
             contentDescription = "Save",
             tint = Color.Black,
             modifier = Modifier.size(36.dp)
