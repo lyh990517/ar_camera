@@ -13,7 +13,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -25,6 +30,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import com.google.android.filament.Engine
@@ -68,7 +74,7 @@ fun ArCameraScreen() {
         var modelScale by remember { mutableFloatStateOf(0.5f) }
         var currentAnchor by remember { mutableStateOf<Anchor?>(null) }
         var frame by remember { mutableStateOf<Frame?>(null) }
-        val captureResult = remember { mutableStateOf<Bitmap?>(null) }
+        var captureResult by remember { mutableStateOf<Bitmap?>(null) }
         var arSceneView by remember { mutableStateOf<ARSceneView?>(null) }
 
         ARScene(
@@ -125,8 +131,8 @@ fun ArCameraScreen() {
                             }
                     }
                 },
-                onMove = { d, m, n ->
-                    val hitResults = frame?.hitTest(m.x, m.y)
+                onMove = { _, motionEvent, _ ->
+                    val hitResults = frame?.hitTest(motionEvent.x, motionEvent.y)
 
                     hitResults
                         ?.firstOrNull()
@@ -135,7 +141,7 @@ fun ArCameraScreen() {
                             currentAnchor = anchor
                         }
                 },
-                onScale = { scaleGestureDetector, motionEvent, node ->
+                onScale = { scaleGestureDetector, _, _ ->
                     val scaleFactor = scaleGestureDetector.scaleFactor
                     modelScale = (modelScale * scaleFactor).coerceAtMost(1f).coerceAtLeast(0.1f)
                 },
@@ -145,7 +151,9 @@ fun ArCameraScreen() {
             }
         )
         Menu(
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 100.dp),
             onClear = {
                 childNodes.clear()
                 currentAnchor = null
@@ -156,12 +164,20 @@ fun ArCameraScreen() {
                     scope.launch(Dispatchers.IO) {
                         val byteArray = handleSnapshot(it).first()
                         val bitmap = byteArrayToBitmap(byteArray)
-                        captureResult.value = bitmap
+                        captureResult = bitmap
                     }
                 }
             }
         )
-        CaptureResult(captureResult)
+        CaptureResult(
+            result = captureResult,
+            onBackPressed = {
+                captureResult = null
+            },
+            onSave = {
+
+            }
+        )
     }
 }
 
@@ -174,7 +190,6 @@ private fun Menu(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 100.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -195,17 +210,33 @@ private fun Menu(
 }
 
 @Composable
-private fun CaptureResult(captureBitmapState: MutableState<Bitmap?>) {
-    captureBitmapState.value?.let { bitmap ->
+private fun CaptureResult(
+    result: Bitmap?,
+    onBackPressed: () -> Unit,
+    onSave: () -> Unit,
+) {
+    result?.let { bitmap ->
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
             Image(
                 bitmap = bitmap.asImageBitmap(),
                 contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
+                modifier = Modifier.fillMaxSize()
             )
+
+            IconButton(
+                onClick = onBackPressed,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
         }
     }
 }
