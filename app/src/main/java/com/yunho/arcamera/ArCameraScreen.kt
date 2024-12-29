@@ -16,10 +16,8 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -28,6 +26,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -160,15 +159,22 @@ fun ArCameraScreen() {
                 arSceneView = this
             }
         )
-        Menu(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 100.dp),
-            onClear = {
+
+        ResetButton(
+            modifier = Modifier.Companion
+                .align(Alignment.TopEnd)
+                .statusBarsPadding(),
+            onReset = {
                 childNodes.clear()
                 currentAnchor = null
                 modelScale = 0.5f
-            },
+            }
+        )
+
+        CaptureButton(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 100.dp),
             onCapture = {
                 arSceneView?.let {
                     scope.launch(Dispatchers.IO) {
@@ -189,29 +195,38 @@ fun ArCameraScreen() {
 }
 
 @Composable
-private fun Menu(
+private fun ResetButton(
+    modifier: Modifier,
+    onReset: () -> Unit,
+) {
+    IconButton(
+        onClick = {
+            onReset()
+        },
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = Icons.Default.Refresh,
+            contentDescription = "reset",
+            tint = Color.White
+        )
+    }
+}
+
+@Composable
+private fun CaptureButton(
     modifier: Modifier = Modifier,
-    onClear: () -> Unit,
     onCapture: () -> Unit,
 ) {
     Column(
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround
-        ) {
-            Button(onClick = {
-                onClear()
-            }) {
-                Text("Reset")
-            }
-            Button(onClick = {
-                onCapture()
-            }) {
-                Text("Capture")
-            }
+        Button(onClick = {
+            onCapture()
+        }) {
+            Text("Capture")
         }
     }
 }
