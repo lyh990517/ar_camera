@@ -186,6 +186,8 @@ fun ArCameraScreen() {
             AnimationButton(
                 text = "happy",
                 onAnimate = {
+                    if (childNodes.isEmpty()) return@AnimationButton
+
                     val model = childNodes.first() as ModelNode
 
                     scope.launch {
@@ -201,6 +203,8 @@ fun ArCameraScreen() {
             AnimationButton(
                 text = "sad",
                 onAnimate = {
+                    if (childNodes.isEmpty()) return@AnimationButton
+
                     val model = childNodes.first() as ModelNode
 
                     scope.launch {
