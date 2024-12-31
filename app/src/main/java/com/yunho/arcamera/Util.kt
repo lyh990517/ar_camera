@@ -11,7 +11,7 @@ suspend fun ModelNode.playAnimationOnce(
 
     playAnimation(index, 1f, false)
 
-    delay(duration.toLong())
+    delay(duration.toLong() + 50)
 
     onAnimationEnd()
 }
