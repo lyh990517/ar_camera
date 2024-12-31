@@ -4,12 +4,12 @@ import io.github.sceneview.node.ModelNode
 import kotlinx.coroutines.delay
 
 suspend fun ModelNode.playAnimationOnce(
-    animationIndex: Int,
+    index: Int,
     onAnimationEnd: () -> Unit,
 ) {
-    val animationName = animator.getAnimationName(animationIndex)
-    val duration = animator.getAnimationDuration(animationIndex) * 1000
-    playAnimation(animationName, 1f, false)
+    val duration = animator.getAnimationDuration(index) * 1000
+
+    playAnimation(index, 1f, false)
 
     delay(duration.toLong())
 

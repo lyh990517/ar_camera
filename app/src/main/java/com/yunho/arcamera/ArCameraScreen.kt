@@ -17,11 +17,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -30,6 +34,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -75,7 +80,6 @@ fun ArCameraScreen() {
         modifier = Modifier.fillMaxSize(),
     ) {
         val scope = rememberCoroutineScope()
-        val context = LocalContext.current
         val engine = rememberEngine()
         val modelLoader = rememberModelLoader(engine)
         val cameraNode = rememberARCameraNode(engine)
@@ -132,7 +136,7 @@ fun ArCameraScreen() {
                                 currentAnchor = anchor
                                 val pose = anchor.pose
                                 val modelNode = ModelNode(
-                                    modelInstance = modelLoader.createModelInstance("models/super/BoothScene.gltf"),
+                                    modelInstance = modelLoader.createModelInstance("models/BoothScene.glb"),
                                     scaleToUnits = 0.5f,
                                     centerOrigin = Position(pose.tx(), pose.qy(), pose.tz()),
                                     autoAnimate = true
@@ -174,19 +178,39 @@ fun ArCameraScreen() {
             }
         )
 
-        AnimationButton(
+        Row(
             modifier = Modifier.Companion
                 .align(Alignment.TopStart)
-                .statusBarsPadding(),
-            onAnimate = {
-                val model = childNodes.first() as ModelNode
-                scope.launch {
-                    model.playAnimationOnce(0) {
-                        Toast.makeText(context, "animation ended", Toast.LENGTH_SHORT).show()
+                .statusBarsPadding()
+        ) {
+            AnimationButton(
+                text = "happy",
+                onAnimate = {
+                    val model = childNodes.first() as ModelNode
+
+                    scope.launch {
+                        model.playAnimationOnce(1) {
+                            model.playAnimation(0, 1f, true)
+                        }
                     }
                 }
-            }
-        )
+            )
+
+            Spacer(Modifier.width(20.dp))
+
+            AnimationButton(
+                text = "sad",
+                onAnimate = {
+                    val model = childNodes.first() as ModelNode
+
+                    scope.launch {
+                        model.playAnimationOnce(2) {
+                            model.playAnimation(0, 1f, true)
+                        }
+                    }
+                }
+            )
+        }
 
         CaptureButton(
             modifier = Modifier
@@ -234,20 +258,27 @@ private fun ResetButton(
 
 @Composable
 private fun AnimationButton(
-    modifier: Modifier,
+    text: String,
+    modifier: Modifier = Modifier,
     onAnimate: () -> Unit,
 ) {
-    IconButton(
-        onClick = {
-            onAnimate()
-        },
-        modifier = modifier
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = Icons.Default.PlayArrow,
-            contentDescription = "play",
-            tint = Color.White
-        )
+        IconButton(
+            onClick = {
+                onAnimate()
+            },
+            modifier = modifier
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = "play",
+                tint = Color.White
+            )
+        }
+
+        Text(text, color = Color.White)
     }
 }
 
