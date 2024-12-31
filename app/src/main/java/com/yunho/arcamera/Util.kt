@@ -1,7 +1,17 @@
 package com.yunho.arcamera
 
-import io.github.sceneview.model.Model
+import io.github.sceneview.node.ModelNode
+import kotlinx.coroutines.delay
 
-suspend fun playAnimation(animationName: String, speed: Float = 1f, loop: Boolean = true) {
-    playAnimation(animationName, speed, loop)
+suspend fun ModelNode.playAnimationOnce(
+    animationIndex: Int,
+    onAnimationEnd: () -> Unit,
+) {
+    val animationName = animator.getAnimationName(animationIndex)
+    val duration = animator.getAnimationDuration(animationIndex) * 1000
+    playAnimation(animationName, 1f, false)
+
+    delay(duration.toLong())
+
+    onAnimationEnd()
 }

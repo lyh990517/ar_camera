@@ -65,7 +65,6 @@ import io.github.sceneview.rememberOnGestureListener
 import io.github.sceneview.rememberView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -76,6 +75,7 @@ fun ArCameraScreen() {
         modifier = Modifier.fillMaxSize(),
     ) {
         val scope = rememberCoroutineScope()
+        val context = LocalContext.current
         val engine = rememberEngine()
         val modelLoader = rememberModelLoader(engine)
         val cameraNode = rememberARCameraNode(engine)
@@ -180,17 +180,10 @@ fun ArCameraScreen() {
                 .statusBarsPadding(),
             onAnimate = {
                 val model = childNodes.first() as ModelNode
-                val animationName = model.animator.getAnimationName(0)
-                val duration = model.animator.getAnimationDuration(0) * 1000
-                val onAnimationEnded: () -> Unit = {
-
-                }
-
-                model.playAnimation(animationName, speed = 1f, loop = true)
-
                 scope.launch {
-                    delay(duration.toLong())
-                    onAnimationEnded()
+                    model.playAnimationOnce(0) {
+                        Toast.makeText(context, "animation ended", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         )
