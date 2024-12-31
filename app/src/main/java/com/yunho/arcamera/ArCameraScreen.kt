@@ -25,8 +25,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -47,7 +46,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.google.android.filament.Engine
 import com.google.ar.core.Anchor
 import com.google.ar.core.Config
 import com.google.ar.core.Frame
@@ -55,9 +53,7 @@ import io.github.sceneview.ar.ARScene
 import io.github.sceneview.ar.ARSceneView
 import io.github.sceneview.ar.arcore.createAnchorOrNull
 import io.github.sceneview.ar.arcore.isValid
-import io.github.sceneview.ar.node.AnchorNode
 import io.github.sceneview.ar.rememberARCameraNode
-import io.github.sceneview.loaders.ModelLoader
 import io.github.sceneview.math.Position
 import io.github.sceneview.math.Scale
 import io.github.sceneview.node.ModelNode
@@ -90,6 +86,7 @@ fun ArCameraScreen() {
         var frame by remember { mutableStateOf<Frame?>(null) }
         var captureResult by remember { mutableStateOf<Bitmap?>(null) }
         var arSceneView by remember { mutableStateOf<ARSceneView?>(null) }
+        var isPlayAnimation by remember { mutableStateOf(false) }
 
         ARScene(
             modifier = Modifier
@@ -133,11 +130,16 @@ fun ArCameraScreen() {
                                 childNodes.clear()
 
                                 currentAnchor = anchor
-                                childNodes += createAnchorNode(
-                                    engine = engine,
-                                    modelLoader = modelLoader,
-                                    anchor = anchor
-                                )
+                                val pose = anchor.pose
+                                val modelNode = ModelNode(
+                                    modelInstance = modelLoader.createModelInstance("models/scene.gltf"),
+                                    scaleToUnits = 0.5f,
+                                    centerOrigin = Position(pose.tx(), pose.qy(), pose.tz()),
+                                    autoAnimate = false
+                                ).apply {
+                                    isEditable = true
+                                }
+                                childNodes += modelNode
                             }
                     }
                 },
@@ -169,6 +171,23 @@ fun ArCameraScreen() {
                 childNodes.clear()
                 currentAnchor = null
                 modelScale = 0.5f
+            }
+        )
+
+        AnimationButton(
+            modifier = Modifier.Companion
+                .align(Alignment.TopStart)
+                .statusBarsPadding(),
+            onAnimate = {
+                val model = childNodes.first() as ModelNode
+                val animationName = model.animator.getAnimationName(0)
+                if (!isPlayAnimation) {
+                    isPlayAnimation = true
+                    model.playAnimation(animationName, speed = 1f, loop = true)
+                } else {
+                    isPlayAnimation = false
+                    model.stopAnimation(0)
+                }
             }
         )
 
@@ -211,6 +230,25 @@ private fun ResetButton(
         Icon(
             imageVector = Icons.Default.Refresh,
             contentDescription = "reset",
+            tint = Color.White
+        )
+    }
+}
+
+@Composable
+private fun AnimationButton(
+    modifier: Modifier,
+    onAnimate: () -> Unit,
+) {
+    IconButton(
+        onClick = {
+            onAnimate()
+        },
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = Icons.Default.PlayArrow,
+            contentDescription = "play",
             tint = Color.White
         )
     }
@@ -381,22 +419,4 @@ private fun handleSnapshot(arSceneView: ARSceneView) = callbackFlow {
     )
 
     awaitClose { }
-}
-
-fun createAnchorNode(
-    engine: Engine,
-    modelLoader: ModelLoader,
-    anchor: Anchor,
-): AnchorNode {
-    val pose = anchor.pose
-    val anchorNode = AnchorNode(engine = engine, anchor = anchor)
-    val modelNode = ModelNode(
-        modelInstance = modelLoader.createModelInstance("models/halloween.glb"),
-        scaleToUnits = 0.05f,
-        centerOrigin = Position(pose.tx(), pose.qy(), pose.tz())
-    ).apply {
-        isEditable = true
-    }
-    anchorNode.addChildNode(modelNode)
-    return anchorNode
 }
