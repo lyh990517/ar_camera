@@ -65,6 +65,7 @@ import io.github.sceneview.rememberOnGestureListener
 import io.github.sceneview.rememberView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -86,7 +87,6 @@ fun ArCameraScreen() {
         var frame by remember { mutableStateOf<Frame?>(null) }
         var captureResult by remember { mutableStateOf<Bitmap?>(null) }
         var arSceneView by remember { mutableStateOf<ARSceneView?>(null) }
-        var isPlayAnimation by remember { mutableStateOf(false) }
 
         ARScene(
             modifier = Modifier
@@ -132,10 +132,10 @@ fun ArCameraScreen() {
                                 currentAnchor = anchor
                                 val pose = anchor.pose
                                 val modelNode = ModelNode(
-                                    modelInstance = modelLoader.createModelInstance("models/scene.gltf"),
+                                    modelInstance = modelLoader.createModelInstance("models/super/BoothScene.gltf"),
                                     scaleToUnits = 0.5f,
                                     centerOrigin = Position(pose.tx(), pose.qy(), pose.tz()),
-                                    autoAnimate = false
+                                    autoAnimate = true
                                 ).apply {
                                     isEditable = true
                                 }
@@ -181,12 +181,16 @@ fun ArCameraScreen() {
             onAnimate = {
                 val model = childNodes.first() as ModelNode
                 val animationName = model.animator.getAnimationName(0)
-                if (!isPlayAnimation) {
-                    isPlayAnimation = true
-                    model.playAnimation(animationName, speed = 1f, loop = true)
-                } else {
-                    isPlayAnimation = false
-                    model.stopAnimation(0)
+                val duration = model.animator.getAnimationDuration(0) * 1000
+                val onAnimationEnded: () -> Unit = {
+
+                }
+
+                model.playAnimation(animationName, speed = 1f, loop = true)
+
+                scope.launch {
+                    delay(duration.toLong())
+                    onAnimationEnded()
                 }
             }
         )
