@@ -1,56 +1,26 @@
 package com.yunho.arcamera
 
-import android.Manifest
-import android.content.ContentValues
-import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.os.Build
-import android.os.Environment
-import android.os.Handler
-import android.os.Looper
-import android.provider.MediaStore
-import android.view.PixelCopy
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.google.ar.core.Anchor
 import com.google.ar.core.Config
 import com.google.ar.core.Frame
@@ -62,15 +32,13 @@ import io.github.sceneview.ar.rememberARCameraNode
 import io.github.sceneview.math.Position
 import io.github.sceneview.math.Scale
 import io.github.sceneview.node.ModelNode
+import io.github.sceneview.node.Node
 import io.github.sceneview.rememberCollisionSystem
 import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberModelLoader
 import io.github.sceneview.rememberNodes
 import io.github.sceneview.rememberOnGestureListener
 import io.github.sceneview.rememberView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -91,6 +59,20 @@ fun ArCameraScreen() {
         var frame by remember { mutableStateOf<Frame?>(null) }
         var captureResult by remember { mutableStateOf<Bitmap?>(null) }
         var arSceneView by remember { mutableStateOf<ARSceneView?>(null) }
+
+        LaunchedEffect(childNodes.size) {
+            if (childNodes.isNotEmpty()) {
+                val model = childNodes.first() as ModelNode
+
+                scope.launch {
+                    model.playAnimation(
+                        animationIndex = Emotion.IDLE.value,
+                        speed = 1f,
+                        loop = true
+                    )
+                }
+            }
+        }
 
         ARScene(
             modifier = Modifier
@@ -132,14 +114,14 @@ fun ArCameraScreen() {
                             ?.createAnchorOrNull()
                             ?.let { anchor ->
                                 childNodes.clear()
-
                                 currentAnchor = anchor
+
                                 val pose = anchor.pose
                                 val modelNode = ModelNode(
                                     modelInstance = modelLoader.createModelInstance("models/BoothScene.glb"),
                                     scaleToUnits = 0.5f,
                                     centerOrigin = Position(pose.tx(), pose.qy(), pose.tz()),
-                                    autoAnimate = true
+                                    autoAnimate = false
                                 ).apply {
                                     isEditable = true
                                 }
@@ -178,43 +160,29 @@ fun ArCameraScreen() {
             }
         )
 
-        Row(
-            modifier = Modifier.Companion
+        AnimationMenu(
+            modifier = Modifier
                 .align(Alignment.TopStart)
-                .statusBarsPadding()
-        ) {
-            AnimationButton(
-                text = "happy",
-                onAnimate = {
-                    if (childNodes.isEmpty()) return@AnimationButton
+                .statusBarsPadding(),
+            onHappy = {
+                if (childNodes.isEmpty()) return@AnimationMenu
 
-                    val model = childNodes.first() as ModelNode
+                val model = childNodes.first() as ModelNode
 
-                    scope.launch {
-                        model.playAnimationOnce(1) {
-                            model.playAnimation(0, 1f, true)
-                        }
-                    }
+                scope.launch {
+                    model.playAnimationAndResetToIdle(Emotion.HAPPY)
                 }
-            )
+            },
+            onSad = {
+                if (childNodes.isEmpty()) return@AnimationMenu
 
-            Spacer(Modifier.width(20.dp))
+                val model = childNodes.first() as ModelNode
 
-            AnimationButton(
-                text = "sad",
-                onAnimate = {
-                    if (childNodes.isEmpty()) return@AnimationButton
-
-                    val model = childNodes.first() as ModelNode
-
-                    scope.launch {
-                        model.playAnimationOnce(2) {
-                            model.playAnimation(0, 1f, true)
-                        }
-                    }
+                scope.launch {
+                    model.playAnimationAndResetToIdle(Emotion.SAD)
                 }
-            )
-        }
+            }
+        )
 
         CaptureButton(
             modifier = Modifier
@@ -223,7 +191,7 @@ fun ArCameraScreen() {
                 .padding(bottom = 100.dp),
             onCapture = {
                 arSceneView?.let {
-                    scope.launch(Dispatchers.IO) {
+                    scope.launch {
                         val byteArray = handleSnapshot(it).first()
                         val bitmap = byteArrayToBitmap(byteArray)
                         captureResult = bitmap
@@ -242,213 +210,30 @@ fun ArCameraScreen() {
 }
 
 @Composable
-private fun ResetButton(
-    modifier: Modifier,
-    onReset: () -> Unit,
+private fun AnimationMenu(
+    onHappy: () -> Unit,
+    onSad: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    IconButton(
-        onClick = {
-            onReset()
-        },
+
+    Row(
         modifier = modifier
     ) {
-        Icon(
-            imageVector = Icons.Default.Refresh,
-            contentDescription = "reset",
-            tint = Color.White
+        AnimationButton(
+            text = "happy",
+            onAnimate = {
+                onHappy()
+            }
+        )
+
+        Spacer(Modifier.width(20.dp))
+
+        AnimationButton(
+            text = "sad",
+            onAnimate = {
+                onSad()
+            }
         )
     }
 }
 
-@Composable
-private fun AnimationButton(
-    text: String,
-    modifier: Modifier = Modifier,
-    onAnimate: () -> Unit,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        IconButton(
-            onClick = {
-                onAnimate()
-            },
-            modifier = modifier
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "play",
-                tint = Color.White
-            )
-        }
-
-        Text(text, color = Color.White)
-    }
-}
-
-@Composable
-private fun CaptureButton(
-    modifier: Modifier = Modifier,
-    onCapture: () -> Unit,
-) {
-    FloatingActionButton(
-        onClick = { onCapture() },
-        containerColor = Color.White,
-        contentColor = Color.Black,
-        modifier = modifier
-            .size(72.dp)
-            .shadow(10.dp, shape = CircleShape)
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.camera),
-            contentDescription = "Capture",
-            tint = Color.Black,
-            modifier = Modifier.size(36.dp)
-        )
-    }
-}
-
-@Composable
-private fun SaveButton(
-    modifier: Modifier = Modifier,
-    onSave: () -> Unit,
-) {
-    FloatingActionButton(
-        onClick = { onSave() },
-        containerColor = Color.White,
-        contentColor = Color.Black,
-        modifier = modifier
-            .size(72.dp)
-            .shadow(10.dp, shape = CircleShape)
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.download),
-            contentDescription = "Save",
-            tint = Color.Black,
-            modifier = Modifier.size(36.dp)
-        )
-    }
-}
-
-@Composable
-private fun CaptureResult(
-    result: Bitmap?,
-    onBackPressed: () -> Unit,
-) {
-    val context = LocalContext.current
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                result?.let { bitmap ->
-                    saveBitmapToGallery(context = context, bitmap = bitmap)
-                }
-            } else {
-                Toast.makeText(context, "Permission denied. Cannot save image.", Toast.LENGTH_SHORT)
-                    .show()
-            }
-        }
-    )
-
-    result?.let { bitmap ->
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize()
-            )
-
-            IconButton(
-                onClick = onBackPressed,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .statusBarsPadding()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White
-                )
-            }
-
-            SaveButton(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 100.dp)
-            ) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    saveBitmapToGallery(context = context, bitmap = bitmap)
-                } else {
-                    if (ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.WRITE_EXTERNAL_STORAGE
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        saveBitmapToGallery(context = context, bitmap = bitmap)
-                    } else {
-                        permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    }
-                }
-            }
-        }
-    }
-}
-
-fun saveBitmapToGallery(context: Context, bitmap: Bitmap) {
-    val contentValues = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, "Image_${System.currentTimeMillis()}.jpg")
-        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-    }
-
-    val resolver = context.contentResolver
-    val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-
-    uri?.let {
-        resolver.openOutputStream(it).use { outputStream ->
-            if (outputStream != null) {
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-                Toast.makeText(context, "Image saved to gallery!", Toast.LENGTH_SHORT).show()
-            }
-        }
-    } ?: run {
-        Toast.makeText(context, "Failed to save image", Toast.LENGTH_SHORT).show()
-    }
-}
-
-private fun byteArrayToBitmap(byteArray: ByteArray): Bitmap? {
-    return BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
-}
-
-private fun handleSnapshot(arSceneView: ARSceneView) = callbackFlow {
-    val bitmap =
-        Bitmap.createBitmap(
-            arSceneView.width,
-            arSceneView.height,
-            Bitmap.Config.ARGB_8888,
-        )
-
-    val listener =
-        PixelCopy.OnPixelCopyFinishedListener { copyResult ->
-            if (copyResult == PixelCopy.SUCCESS) {
-                val byteStream = java.io.ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream)
-                val byteArray = byteStream.toByteArray()
-                trySend(
-                    byteArray
-                )
-            }
-        }
-
-    PixelCopy.request(
-        arSceneView,
-        bitmap,
-        listener,
-        Handler(Looper.getMainLooper()),
-    )
-
-    awaitClose { }
-}
