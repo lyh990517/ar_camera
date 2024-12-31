@@ -95,7 +95,7 @@ fun ArCameraScreen() {
             engine = engine,
             view = view,
             modelLoader = modelLoader,
-            planeRenderer = false,
+            planeRenderer = true,
             collisionSystem = collisionSystem,
             sessionConfiguration = { session, config ->
                 config.depthMode =
